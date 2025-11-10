@@ -1,0 +1,21 @@
+[bandit]
+# 排除的目录
+exclude_dirs = [
+    '/tests/',
+    '/programs/archive/',
+    '/scripts/archive/',
+    '/.venv/',
+    '/venv/',
+]
+
+# 跳过的测试
+skips = [
+    # B101: assert的使用（在测试中是合理的）
+    'B101',
+]
+
+# 测试级别：LOW, MEDIUM, HIGH
+level = MEDIUM
+
+# 置信度级别：LOW, MEDIUM, HIGH
+confidence = MEDIUM
