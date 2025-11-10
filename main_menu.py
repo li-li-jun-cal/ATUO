@@ -612,30 +612,30 @@ def main():
             )
 
         elif choice == '3':
-            # 实时自动化
+            # 实时自动化 (使用统一自动化服务)
             run_command(
-                f"{sys.executable} programs/run_priority_automation.py --mode realtime",
+                f"{sys.executable} programs/run_automation.py realtime --all",
                 "实时自动化 - 处理新增评论"
             )
 
         elif choice == '4':
-            # 近期自动化
+            # 近期自动化 (使用统一自动化服务)
             run_command(
-                f"{sys.executable} programs/run_priority_automation.py --mode recent",
+                f"{sys.executable} programs/run_automation.py recent --all",
                 "近期自动化 - 处理3个月内评论"
             )
 
         elif choice == '5':
-            # 长期自动化
+            # 长期自动化 (使用统一自动化服务)
             run_command(
-                f"{sys.executable} programs/run_long_term_automation.py --auto",
+                f"{sys.executable} programs/run_automation.py longterm --all",
                 "长期自动化 - 处理3个月以上评论"
             )
 
         elif choice == '6':
-            # 混合自动化
+            # 混合自动化 (使用统一自动化服务)
             run_command(
-                f"{sys.executable} programs/run_priority_automation.py --mode mixed",
+                f"{sys.executable} programs/run_automation.py mixed --all",
                 "混合自动化 - 实时+近期"
             )
 
