@@ -16,7 +16,8 @@
       "Bash(start http://localhost:8888)",
       "Bash(timeout 5 bash:*)",
       "Bash(dir:*)",
-      "Bash(findstr:*)"
+      "Bash(findstr:*)",
+      "Bash(tree:*)"
     ],
     "deny": [],
     "ask": []
