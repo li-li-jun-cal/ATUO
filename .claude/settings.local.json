@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python test_simplified_system.py:*)",
+      "Bash(python:*)",
+      "Read(//d/Users/zk/Desktop/DY-A/src/**)",
+      "Read(//d/Users/zk/Desktop/DY-A/**)",
+      "Read(//d/Users/zk/Downloads/**)",
+      "Read(//d/Users/zk/Desktop/an13/managers/**)",
+      "Read(//d/Users/zk/Desktop/an13/**)",
+      "Bash(ls:*)",
+      "Read(//d/Users/zk/Desktop/Douyin_TikTok_Download_API-main/crawlers/douyin/web/**)",
+      "Bash(curl:*)",
+      "Bash(test:*)",
+      "Bash(timeout 3 bash:*)",
+      "Bash(start http://localhost:8888)",
+      "Bash(timeout 5 bash:*)",
+      "Bash(dir:*)",
+      "Bash(findstr:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

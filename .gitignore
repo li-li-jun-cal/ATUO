@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+.build/
+dist/
+build/
+.eggs/
+*.egg-info/
+.venv/
+venv/
+env/
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+
+# Data / DB
+data/*.db
+*.sqlite
+
+# Env / Secrets
+.env
+.env.*
+config/douyin_cookie.txt
+config/douyin_cookies_pool.txt
+config/target_accounts.json
+
+# Misc
+test_execution.log
+
+
