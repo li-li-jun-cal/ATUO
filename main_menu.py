@@ -598,16 +598,16 @@ def main():
             break
 
         elif choice == '1':
-            # 全量爬虫
+            # 全量爬虫 (使用统一爬虫服务)
             run_command(
-                f"{sys.executable} programs/run_history_crawler.py",
+                f"{sys.executable} programs/run_crawler.py history --all",
                 "全量爬虫 - 爬取历史评论"
             )
 
         elif choice == '2':
-            # 监控爬虫
+            # 监控爬虫 (使用统一爬虫服务)
             run_command(
-                f"{sys.executable} programs/run_monitor_crawler.py",
+                f"{sys.executable} programs/run_crawler.py monitor --all",
                 "监控爬虫 - 监控新增评论"
             )
 

@@ -20,15 +20,18 @@
 ### 实验性程序
 - **run_automation_with_stats.py** - 带统计的自动化 (实验版本)
 
+### 已被统一服务替代的程序 (Phase 1)
+- **run_history_crawler.py** - 全量爬虫 (已被 run_crawler.py 替代)
+- **run_monitor_crawler.py** - 监控爬虫 (已被 run_crawler.py 替代)
+
 ## 活跃程序（保留在 programs/ 根目录）
 
 当前正在使用的程序：
-1. **run_history_crawler.py** - 全量爬虫
-2. **run_monitor_crawler.py** - 监控爬虫
-3. **run_priority_automation.py** - 优先级自动化（主要）
-4. **run_long_term_automation.py** - 长期自动化
-5. **run_realtime_automation.py** - 实时自动化
-6. **run_recent_automation.py** - 近期自动化
+1. **run_crawler.py** - 统一爬虫服务 (历史/监控/混合模式)
+2. **run_priority_automation.py** - 优先级自动化（主要）
+3. **run_long_term_automation.py** - 长期自动化
+4. **run_realtime_automation.py** - 实时自动化
+5. **run_recent_automation.py** - 近期自动化
 
 ## 恢复方法
 
@@ -45,8 +48,11 @@ git show <commit>:programs/<filename> > programs/<filename>
 
 ## 说明
 
-这些程序被移到 archive 是 Phase 0 重构计划的一部分，目的是清理项目结构，使代码更易于维护。所有程序的历史记录都保存在 git 历史中，可随时恢复。
+这些程序被移到 archive 是重构计划的一部分，目的是清理项目结构，使代码更易于维护。所有程序的历史记录都保存在 git 历史中，可随时恢复。
+
+- **Phase 0.2**: 存档未使用程序 (7个)
+- **Phase 1**: 用统一服务替代独立爬虫 (2个)
 
 ---
-*存档日期: 2025-11-10*
-*重构阶段: Phase 0.2*
+*最后更新: 2025-11-10*
+*当前阶段: Phase 1 - 爬虫服务分离*
