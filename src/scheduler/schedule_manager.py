@@ -9,7 +9,7 @@ import schedule
 from datetime import datetime
 from src.crawler.history_crawler import HistoryCrawler
 from src.crawler.monitor_crawler import MonitorCrawler
-from src.scheduler.task_generator import TaskGenerator
+from src.generator.task_generator import TaskGenerator
 from src.executor.automation_executor import AutomationExecutor
 from src.scheduler.task_scheduler import TaskScheduler
 from src.database.manager import DatabaseManager

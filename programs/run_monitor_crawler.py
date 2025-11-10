@@ -50,7 +50,7 @@ logger = logging.getLogger(__name__)
 
 from src.database.manager import DatabaseManager
 from src.crawler.monitor_crawler import MonitorCrawler
-from src.scheduler.task_generator import TaskGenerator
+from src.generator.task_generator import TaskGenerator
 from src.crawler.api_client import DouyinAPIClient
 
 

@@ -17,7 +17,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 from src.database.manager import DatabaseManager
 from src.database.models import InteractionTask
 from src.scheduler.task_scheduler import TaskScheduler
-from src.scheduler.task_generator import TaskGenerator
+from src.generator.task_generator import TaskGenerator
 from sqlalchemy import func
 
 def test_device_based_deduplication():
