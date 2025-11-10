@@ -33,6 +33,10 @@ data/*.db
 config/douyin_cookie.txt
 config/douyin_cookies_pool.txt
 config/target_accounts.json
+config/config.json
+config/*_cookie*
+config/*_key*
+config/*.key
 
 # Misc
 test_execution.log
