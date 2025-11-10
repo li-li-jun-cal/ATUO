@@ -1,0 +1,64 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Virtual environments
+.venv
+venv/
+ENV/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project specific
+logs/*.log
+data/*.db
+data/*.db-journal
+config/config.json
+config/*_cookie*
+config/*_key*
+*.key
+
+# Documentation
+*.md
+!README.md
+CLAUDE.md
+CODE_ANALYSIS.md
+REVIEW_SUMMARY.txt
+SECURITY_ISSUES.txt
+
+# Archives
+programs/archive/
+scripts/archive/
+
+# CI/CD (keep in image)
+# .github/
+
+# Env files (keep .env.example)
+.env
+!.env.example
