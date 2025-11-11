@@ -78,17 +78,26 @@ from src.crawler.history_crawler import HistoryCrawler
 from src.crawler.monitor_crawler import MonitorCrawler
 from src.generator.task_generator import TaskGenerator
 from src.crawler.api_client import DouyinAPIClient
+from src.crawler.server_pool import ServerPool
+from src.crawler.parallel_crawler import ParallelCrawler
 
 
 class CrawlerService:
     """统一的爬虫服务类"""
 
-    def __init__(self):
-        """初始化爬虫服务"""
+    def __init__(self, enable_parallel: bool = False):
+        """初始化爬虫服务
+
+        Args:
+            enable_parallel: 是否启用并行爬取（需要配置多服务器）
+        """
         self.db = None
         self.api_client = None
         self.task_generator = None
         self.config = {}
+        self.enable_parallel = enable_parallel
+        self.server_pool = None
+        self.parallel_crawler = None
 
     def initialize(self) -> bool:
         """初始化所有组件
@@ -115,6 +124,14 @@ class CrawlerService:
             # 初始化任务生成器
             self.task_generator = TaskGenerator(self.db)
             logger.info("✓ 任务生成器初始化完成")
+
+            # 初始化服务器池和并行爬虫（如果启用）
+            if self.enable_parallel:
+                logger.info("初始化服务器池...")
+                self.server_pool = ServerPool()
+                self.parallel_crawler = ParallelCrawler(self.server_pool)
+                max_workers = self.server_pool.get_max_workers()
+                logger.info(f"✓ 并行爬取已启用 (最大并发: {max_workers})")
 
             return True
 
@@ -326,8 +343,19 @@ class CrawlerService:
         logger.info("📝 历史爬虫模式 - 启动")
         logger.info(f"   账号数量: {len(accounts)}")
         logger.info(f"   时间范围: 最近 {days} 天")
+        if self.enable_parallel:
+            logger.info(f"   并行模式: ✓ 已启用 (最大并发: {self.server_pool.get_max_workers()})")
         logger.info("=" * 70)
 
+        # 使用并行模式
+        if self.enable_parallel and self.parallel_crawler:
+            return self._run_history_parallel(accounts, days)
+
+        # 使用串行模式（原有逻辑）
+        return self._run_history_serial(accounts, days)
+
+    def _run_history_serial(self, accounts: List, days: int = 90) -> dict:
+        """串行模式：逐个账号爬取（原有逻辑）"""
         crawler = HistoryCrawler(self.db, self.api_client)
 
         total_comments = 0
@@ -381,6 +409,55 @@ class CrawlerService:
         }
 
         self._print_summary(stats)
+        return stats
+
+    def _run_history_parallel(self, accounts: List, days: int = 90) -> dict:
+        """并行模式：多服务器并发爬取"""
+        def crawl_one_account(account, server, db):
+            """并行爬取单个账号的包装函数"""
+            try:
+                # 创建爬虫实例（使用服务器的cookie）
+                from src.crawler.api_client import DouyinAPIClient
+                api_client = DouyinAPIClient(cookie=server.cookie, api_url=server.url)
+                crawler = HistoryCrawler(db, api_client)
+
+                # 爬取历史
+                result = crawler.crawl_history(account, days=days)
+
+                if result['status'] == 'success':
+                    # 生成任务
+                    task_gen = TaskGenerator(db)
+                    task_count = task_gen.generate_from_history(account.id)
+                    logger.info(f"  [{server.name}] ✓ 任务生成: {task_count} 个")
+                    return True
+                else:
+                    logger.error(f"  [{server.name}] ✗ 爬取失败: {result.get('error', '未知错误')}")
+                    return False
+
+            except Exception as e:
+                logger.error(f"  [{server.name}] ✗ 异常: {e}")
+                return False
+
+        # 使用并行爬虫执行
+        result_stats = self.parallel_crawler.crawl_accounts(
+            accounts=accounts,
+            crawl_func=crawl_one_account,
+            show_progress=True
+        )
+
+        # 转换统计格式（兼容原有格式）
+        stats = {
+            'mode': 'history_parallel',
+            'accounts_total': result_stats['total'],
+            'accounts_success': result_stats['successful'],
+            'accounts_failed': result_stats['failed'],
+            'total_videos': 0,  # 并行模式暂不统计
+            'total_comments': 0,  # 并行模式暂不统计
+            'total_tasks': 0,  # 并行模式暂不统计
+            'duration': result_stats['duration'],
+            'avg_time': result_stats['avg_time_per_task']
+        }
+
         return stats
 
     def run_monitor_crawler(self, accounts: List, top_n: int = 5) -> dict:
@@ -536,17 +613,26 @@ def create_parser():
   # 历史爬虫 - 爬取指定账号
   python programs/run_crawler.py history --accounts 1,3
 
+  # 历史爬虫 - 并行模式（多服务器并发）🚀
+  python programs/run_crawler.py history --all --parallel
+
+  # 历史爬虫 - 交互选择 + 并行模式
+  python programs/run_crawler.py history --interactive --parallel
+
   # 监控爬虫 - 交互式选择账号
   python programs/run_crawler.py monitor --interactive
 
   # 监控爬虫 - 监控所有账号
   python programs/run_crawler.py monitor --all
 
-  # 监控爬虫 - 自定义监控数量
-  python programs/run_crawler.py monitor --top-n 10
+  # 监控爬虫 - 并行模式
+  python programs/run_crawler.py monitor --all --parallel
 
   # 混合模式 - 先历史后监控
   python programs/run_crawler.py hybrid --interactive
+
+  # 混合模式 - 并行爬取
+  python programs/run_crawler.py hybrid --all --parallel
         """
     )
 
@@ -559,6 +645,7 @@ def create_parser():
     history_parser.add_argument('--accounts', type=str, help='指定账号编号（如：1,3）')
     history_parser.add_argument('--interactive', '-i', action='store_true', help='交互式选择账号')
     history_parser.add_argument('--days', type=int, default=90, help='爬取最近N天（默认90）')
+    history_parser.add_argument('--parallel', '-p', action='store_true', help='启用并行爬取（需配置多服务器）')
 
     # 监控爬虫模式
     monitor_parser = subparsers.add_parser('monitor', help='监控爬虫模式')
@@ -566,6 +653,7 @@ def create_parser():
     monitor_parser.add_argument('--accounts', type=str, help='指定账号编号（如：1,3）')
     monitor_parser.add_argument('--interactive', '-i', action='store_true', help='交互式选择账号')
     monitor_parser.add_argument('--top-n', type=int, default=5, help='监控前N个视频（默认5）')
+    monitor_parser.add_argument('--parallel', '-p', action='store_true', help='启用并行爬取（需配置多服务器）')
 
     # 混合模式
     hybrid_parser = subparsers.add_parser('hybrid', help='混合模式（历史+监控）')
@@ -574,6 +662,7 @@ def create_parser():
     hybrid_parser.add_argument('--interactive', '-i', action='store_true', help='交互式选择账号')
     hybrid_parser.add_argument('--days', type=int, default=90, help='历史爬虫天数（默认90）')
     hybrid_parser.add_argument('--top-n', type=int, default=5, help='监控视频数（默认5）')
+    hybrid_parser.add_argument('--parallel', '-p', action='store_true', help='启用并行爬取（需配置多服务器）')
 
     return parser
 
@@ -592,7 +681,8 @@ def main():
 
     try:
         # 初始化服务
-        service = CrawlerService()
+        enable_parallel = hasattr(args, 'parallel') and args.parallel
+        service = CrawlerService(enable_parallel=enable_parallel)
         if not service.initialize():
             return 1
 

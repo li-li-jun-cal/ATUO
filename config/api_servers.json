@@ -1,0 +1,11 @@
+{
+  "primary_servers": [
+    {
+      "name": "server1",
+      "url": "http://127.0.0.1:8888",
+      "cookie": "your_cookie_here",
+      "concurrency_limit": 1
+    }
+  ],
+  "backup_servers": []
+}
