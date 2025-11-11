@@ -81,9 +81,9 @@ def show_statistics():
         # 目标账号数
         account_count = session.query(func.count(TargetAccount.id)).scalar() or 0
 
-        # 在线设备数
+        # 在线设备数（idle或busy状态）
         online_devices = session.query(func.count(Device.id)).filter(
-            Device.status == 'online'
+            Device.status.in_(['idle', 'busy'])
         ).scalar() or 0
 
     print("📊 数据统计:")
@@ -185,11 +185,12 @@ def show_devices():
         if not devices:
             print("  暂无设备")
         else:
-            print(f"{'ID':<5} {'名称':<20} {'类型':<15} {'状态':<10}")
+            print(f"{'ID':<5} {'设备名':<20} {'型号':<20} {'状态':<10}")
             print("-" * 70)
             for dev in devices:
-                status_icon = "🟢" if dev.status == 'online' else "🔴"
-                print(f"{dev.id:<5} {dev.name:<20} {dev.device_type:<15} {status_icon} {dev.status:<10}")
+                # status: idle, busy, error, offline
+                status_icon = "🟢" if dev.status in ['idle', 'busy'] else "🔴"
+                print(f"{dev.id:<5} {dev.device_name:<20} {dev.device_model:<20} {status_icon} {dev.status:<10}")
 
         print(f"\n{'=' * 70}\n")
         input("按回车键返回主菜单...")
@@ -573,7 +574,7 @@ def show_detailed_stats():
         print("【系统资源】")
         account_count = session.query(func.count(TargetAccount.id)).scalar() or 0
         device_count = session.query(func.count(Device.id)).scalar() or 0
-        online_devices = session.query(func.count(Device.id)).filter(Device.status == 'online').scalar() or 0
+        online_devices = session.query(func.count(Device.id)).filter(Device.status.in_(['idle', 'busy'])).scalar() or 0
 
         print(f"  目标账号数: {account_count}")
         print(f"  设备总数: {device_count}")
