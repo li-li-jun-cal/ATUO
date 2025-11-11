@@ -245,16 +245,14 @@ def add_account():
             input("\n按回车键返回主菜单...")
             return
 
-        sec_uid = input("sec_uid (可选): ").strip() or None
-        unique_id = input("unique_id/抖音号 (可选): ").strip() or None
+        sec_user_id = input("sec_user_id (可选，用于爬虫): ").strip() or None
 
         # 确认
         print(f"\n{'=' * 70}")
         print("确认添加以下账号：")
         print(f"  账号名称: {account_name}")
         print(f"  抖音ID: {account_id}")
-        print(f"  sec_uid: {sec_uid or '(未提供)'}")
-        print(f"  unique_id: {unique_id or '(未提供)'}")
+        print(f"  sec_user_id: {sec_user_id or '(未提供)'}")
         print(f"{'=' * 70}\n")
 
         confirm = input("确认添加? (yes/no): ").strip().lower()
@@ -279,8 +277,7 @@ def add_account():
             new_account = TargetAccount(
                 account_name=account_name,
                 account_id=account_id,
-                sec_uid=sec_uid,
-                unique_id=unique_id
+                sec_user_id=sec_user_id
             )
             session.add(new_account)
             session.commit()

@@ -10,7 +10,7 @@ adb-shell>=0.3.0
 # 图像识别
 opencv-python>=4.8.0
 numpy>=1.24.0
-aircv>=1.4.6
+aircv>=1.4.6  # Note: may have installation issues on some systems, see https://github.com/NetEaseGame/aircv/issues
 
 # HTTP 请求
 requests==2.31.0

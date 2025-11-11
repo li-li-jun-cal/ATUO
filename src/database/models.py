@@ -17,7 +17,7 @@ class TargetAccount(Base):
     __tablename__ = 'target_accounts'
 
     id = Column(Integer, primary_key=True)
-    sec_user_id = Column(String(255), unique=True, nullable=False, index=True)
+    sec_user_id = Column(String(255), unique=True, nullable=True, index=True)  # 可选，允许后续补充
     account_name = Column(String(255), nullable=False)
     account_id = Column(String(255), nullable=False)
     homepage_url = Column(String(500))
