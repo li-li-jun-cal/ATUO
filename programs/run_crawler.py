@@ -475,8 +475,19 @@ class CrawlerService:
         logger.info(f"   账号数量: {len(accounts)}")
         logger.info(f"   监控策略: 每账号前 {top_n} 个视频")
         logger.info(f"   运行时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        if self.enable_parallel:
+            logger.info(f"   并行模式: ✓ 已启用 (最大并发: {self.server_pool.get_max_workers()})")
         logger.info("=" * 70)
 
+        # 使用并行模式
+        if self.enable_parallel and self.parallel_crawler:
+            return self._run_monitor_parallel(accounts, top_n)
+
+        # 使用串行模式（原有逻辑）
+        return self._run_monitor_serial(accounts, top_n)
+
+    def _run_monitor_serial(self, accounts: List, top_n: int = 5) -> dict:
+        """串行模式：逐个账号监控（原有逻辑）"""
         crawler = MonitorCrawler(self.db, self.api_client)
 
         total_new_comments = 0
@@ -527,6 +538,60 @@ class CrawlerService:
         }
 
         self._print_summary(stats)
+        return stats
+
+    def _run_monitor_parallel(self, accounts: List, top_n: int = 5) -> dict:
+        """并行模式：多服务器并发监控"""
+        def monitor_one_account(account, server, db):
+            """并行监控单个账号的包装函数"""
+            try:
+                # 创建监控爬虫实例（使用服务器的cookie）
+                from src.crawler.api_client import DouyinAPIClient
+                api_client = DouyinAPIClient(cookie=server.cookie, api_url=server.url)
+                crawler = MonitorCrawler(db, api_client)
+
+                # 监控
+                result = crawler.monitor_daily(account, top_n=top_n)
+
+                if result['status'] == 'success':
+                    new_count = result.get('new_comments_count', 0)
+
+                    # 生成高优先级任务
+                    if new_count > 0:
+                        task_gen = TaskGenerator(db)
+                        task_count = task_gen.generate_from_realtime(account.id)
+                        logger.info(f"  [{server.name}] ✓ 新增 {new_count} 条评论，生成 {task_count} 个任务")
+                    else:
+                        logger.info(f"  [{server.name}] ✓ 暂无新增评论")
+
+                    return True
+                else:
+                    logger.error(f"  [{server.name}] ✗ 监控失败: {result.get('error', '未知错误')}")
+                    return False
+
+            except Exception as e:
+                logger.error(f"  [{server.name}] ✗ 异常: {e}")
+                return False
+
+        # 使用并行爬虫执行
+        result_stats = self.parallel_crawler.crawl_accounts(
+            accounts=accounts,
+            crawl_func=monitor_one_account,
+            show_progress=True
+        )
+
+        # 转换统计格式（兼容原有格式）
+        stats = {
+            'mode': 'monitor_parallel',
+            'accounts_total': result_stats['total'],
+            'accounts_success': result_stats['successful'],
+            'accounts_failed': result_stats['failed'],
+            'new_comments': 0,  # 并行模式暂不统计
+            'total_tasks': 0,  # 并行模式暂不统计
+            'duration': result_stats['duration'],
+            'avg_time': result_stats['avg_time_per_task']
+        }
+
         return stats
 
     def run_hybrid_crawler(self, accounts: List, days: int = 90, top_n: int = 5) -> dict:
