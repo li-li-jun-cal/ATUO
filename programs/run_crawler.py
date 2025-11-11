@@ -6,22 +6,41 @@
     - 历史爬虫：爬取所有视频的历史评论
     - 监控爬虫：定期监控新增评论
     - 支持多种运行模式和调度策略
+    - 智能去重：历史爬虫自动跳过已爬取账号
+    - 交互选择：支持单选、多选、全选账号
 
 用法：
-    # 历史爬虫模式
+    # 历史爬虫 - 交互式选择（推荐）
+    python programs/run_crawler.py history --interactive
+
+    # 历史爬虫 - 自动爬取新账号（默认）
+    python programs/run_crawler.py history
+
+    # 历史爬虫 - 强制爬取所有账号
     python programs/run_crawler.py history --all
+
+    # 历史爬虫 - 指定账号
     python programs/run_crawler.py history --accounts 1,3
 
-    # 监控爬虫模式
-    python programs/run_crawler.py monitor
-    python programs/run_crawler.py monitor --top-n 10
+    # 监控爬虫 - 交互式选择
+    python programs/run_crawler.py monitor --interactive
 
-    # 混合模式（先历史后监控）
-    python programs/run_crawler.py hybrid --all
+    # 监控爬虫 - 所有账号
+    python programs/run_crawler.py monitor --all
+
+    # 混合模式 - 先历史后监控
+    python programs/run_crawler.py hybrid --interactive
+
+智能特性：
+    - 历史爬虫默认只爬取新账号（未爬取过的）
+    - 交互模式显示每个账号的爬取状态（✓已爬取 / ⭐新账号）
+    - 重新爬取已爬账号时会二次确认
+    - 支持选择 "n" 快速选择所有新账号
 
 设计理念：
     - 单一入口：所有爬虫功能统一管理
-    - 模块化：历史和监控爬虫逻辑独立
+    - 智能去重：避免重复爬取浪费资源
+    - 用户友好：交互式选择，清晰的状态提示
     - 可配置：支持命令行参数和配置文件
     - 易扩展：便于添加新的爬虫策略
 """
@@ -132,11 +151,13 @@ class CrawlerService:
             logger.warning(f"⚠ 读取配置文件失败: {e}，使用默认配置")
             return {}
 
-    def get_target_accounts(self, account_filter: Optional[str] = None) -> List:
+    def get_target_accounts(self, account_filter: Optional[str] = None, interactive: bool = False, mode: str = 'history') -> List:
         """获取目标账号列表
 
         Args:
             account_filter: 账号过滤器（如 "1,3" 或 "all"）
+            interactive: 是否使用交互式选择
+            mode: 爬虫模式 (history/monitor)，用于智能过滤
 
         Returns:
             List: 目标账号列表
@@ -150,8 +171,34 @@ class CrawlerService:
 
         logger.info(f"✓ 找到 {len(all_accounts)} 个目标账号")
 
-        # 如果没有过滤器，返回所有账号
-        if not account_filter or account_filter == 'all':
+        # 对于历史爬虫，检查哪些账号已经爬取过
+        crawled_accounts = set()
+        if mode == 'history':
+            crawled_accounts = self._get_crawled_accounts()
+
+        # 交互式选择
+        if interactive:
+            return self._interactive_select_accounts(all_accounts, crawled_accounts, mode)
+
+        # 如果没有过滤器
+        if not account_filter:
+            # 历史爬虫默认只爬取新账号
+            if mode == 'history' and crawled_accounts:
+                new_accounts = [acc for acc in all_accounts if acc.id not in crawled_accounts]
+                if new_accounts:
+                    logger.info(f"✓ 发现 {len(new_accounts)} 个新账号（未爬取过）")
+                    logger.info(f"   已跳过 {len(crawled_accounts)} 个已爬取账号")
+                    logger.info("   提示：使用 --interactive 可以选择重新爬取")
+                    return new_accounts
+                else:
+                    logger.warning("⚠ 所有账号都已爬取过")
+                    logger.info("   使用 --interactive 可以选择重新爬取")
+                    return []
+            # 监控爬虫默认全部
+            return all_accounts
+
+        # 解析 'all' 过滤器
+        if account_filter == 'all':
             return all_accounts
 
         # 解析账号编号过滤
@@ -167,6 +214,102 @@ class CrawlerService:
 
         except ValueError:
             logger.error("❌ 账号编号格式错误！示例：1,3")
+            return []
+
+    def _get_crawled_accounts(self) -> set:
+        """获取已经爬取过的账号ID集合
+
+        Returns:
+            set: 已爬取账号的ID集合
+        """
+        from src.database.models import Comment
+        with self.db.session_scope() as session:
+            # 查询有评论数据的账号
+            result = session.query(Comment.target_account_id).distinct().all()
+            return {row[0] for row in result if row[0]}
+
+    def _interactive_select_accounts(self, all_accounts: List, crawled_accounts: set, mode: str) -> List:
+        """交互式选择账号
+
+        Args:
+            all_accounts: 所有账号列表
+            crawled_accounts: 已爬取账号ID集合
+            mode: 爬虫模式
+
+        Returns:
+            List: 选择的账号列表
+        """
+        print("\n" + "=" * 70)
+        print(f"📋 账号列表（共 {len(all_accounts)} 个）")
+        print("=" * 70)
+
+        # 显示账号列表
+        print(f"\n{'编号':<6} {'账号名':<25} {'抖音ID':<20} {'状态':<10}")
+        print("-" * 70)
+
+        for idx, acc in enumerate(all_accounts, 1):
+            status = ""
+            if mode == 'history':
+                if acc.id in crawled_accounts:
+                    status = "✓ 已爬取"
+                else:
+                    status = "⭐ 新账号"
+
+            print(f"{idx:<6} {acc.account_name:<25} {acc.account_id:<20} {status:<10}")
+
+        print("\n" + "=" * 70)
+        print("选择方式:")
+        print("  0 - 全部账号")
+        if mode == 'history' and crawled_accounts:
+            new_count = len([a for a in all_accounts if a.id not in crawled_accounts])
+            print(f"  n - 仅新账号（{new_count}个未爬取）")
+        print("  1-{} - 单个账号".format(len(all_accounts)))
+        print("  1,3,5 - 多个账号（逗号分隔）")
+        print("=" * 70)
+
+        choice = input("\n请输入选择: ").strip()
+
+        # 处理选择
+        if choice == '0':
+            logger.info(f"✓ 已选择全部 {len(all_accounts)} 个账号")
+            return all_accounts
+
+        if mode == 'history' and choice.lower() == 'n':
+            new_accounts = [acc for acc in all_accounts if acc.id not in crawled_accounts]
+            if new_accounts:
+                logger.info(f"✓ 已选择 {len(new_accounts)} 个新账号")
+                return new_accounts
+            else:
+                logger.warning("⚠ 没有新账号")
+                return []
+
+        # 解析编号
+        try:
+            indices = [int(x.strip()) for x in choice.split(',')]
+            if any(i < 1 or i > len(all_accounts) for i in indices):
+                logger.error(f"❌ 编号超出范围！")
+                return []
+
+            selected = [all_accounts[i-1] for i in sorted(set(indices))]
+            logger.info(f"✓ 已选择 {len(selected)} 个账号:")
+            for acc in selected:
+                status_mark = "✓" if acc.id in crawled_accounts else "⭐"
+                logger.info(f"   {status_mark} {acc.account_name}")
+
+            # 如果选择了已爬取的账号，提示确认
+            if mode == 'history':
+                selected_crawled = [acc for acc in selected if acc.id in crawled_accounts]
+                if selected_crawled:
+                    print(f"\n⚠️  注意：选择中包含 {len(selected_crawled)} 个已爬取账号，将重新爬取")
+                    confirm = input("确认继续？(y/n): ").strip().lower()
+                    if confirm != 'y':
+                        logger.info("已取消")
+                        return []
+
+            return selected
+
+        except ValueError:
+            logger.error("❌ 输入格式错误")
             return []
 
     def run_history_crawler(self, accounts: List, days: int = 90) -> dict:
@@ -381,20 +524,29 @@ def create_parser():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 示例用法:
-  # 历史爬虫 - 爬取所有账号
+  # 历史爬虫 - 交互式选择账号（推荐）
+  python programs/run_crawler.py history --interactive
+
+  # 历史爬虫 - 自动爬取新账号（默认）
+  python programs/run_crawler.py history
+
+  # 历史爬虫 - 爬取所有账号（包括已爬取）
   python programs/run_crawler.py history --all
 
   # 历史爬虫 - 爬取指定账号
   python programs/run_crawler.py history --accounts 1,3
 
-  # 监控爬虫 - 所有账号
-  python programs/run_crawler.py monitor
+  # 监控爬虫 - 交互式选择账号
+  python programs/run_crawler.py monitor --interactive
+
+  # 监控爬虫 - 监控所有账号
+  python programs/run_crawler.py monitor --all
 
   # 监控爬虫 - 自定义监控数量
   python programs/run_crawler.py monitor --top-n 10
 
   # 混合模式 - 先历史后监控
-  python programs/run_crawler.py hybrid --all
+  python programs/run_crawler.py hybrid --interactive
         """
     )
 
@@ -405,18 +557,21 @@ def create_parser():
     history_parser = subparsers.add_parser('history', help='历史爬虫模式')
     history_parser.add_argument('--all', action='store_true', help='爬取所有账号')
     history_parser.add_argument('--accounts', type=str, help='指定账号编号（如：1,3）')
+    history_parser.add_argument('--interactive', '-i', action='store_true', help='交互式选择账号')
     history_parser.add_argument('--days', type=int, default=90, help='爬取最近N天（默认90）')
 
     # 监控爬虫模式
     monitor_parser = subparsers.add_parser('monitor', help='监控爬虫模式')
     monitor_parser.add_argument('--all', action='store_true', help='监控所有账号（默认）')
     monitor_parser.add_argument('--accounts', type=str, help='指定账号编号（如：1,3）')
+    monitor_parser.add_argument('--interactive', '-i', action='store_true', help='交互式选择账号')
     monitor_parser.add_argument('--top-n', type=int, default=5, help='监控前N个视频（默认5）')
 
     # 混合模式
     hybrid_parser = subparsers.add_parser('hybrid', help='混合模式（历史+监控）')
     hybrid_parser.add_argument('--all', action='store_true', help='处理所有账号')
     hybrid_parser.add_argument('--accounts', type=str, help='指定账号编号（如：1,3）')
+    hybrid_parser.add_argument('--interactive', '-i', action='store_true', help='交互式选择账号')
     hybrid_parser.add_argument('--days', type=int, default=90, help='历史爬虫天数（默认90）')
     hybrid_parser.add_argument('--top-n', type=int, default=5, help='监控视频数（默认5）')
 
@@ -443,7 +598,8 @@ def main():
 
         # 获取目标账号
         account_filter = 'all' if args.all else args.accounts
-        accounts = service.get_target_accounts(account_filter)
+        interactive = getattr(args, 'interactive', False)
+        accounts = service.get_target_accounts(account_filter, interactive, args.mode)
 
         if not accounts:
             logger.error("❌ 没有可处理的账号")
