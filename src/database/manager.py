@@ -9,6 +9,7 @@ import logging
 import subprocess
 from pathlib import Path
 from datetime import datetime
+from contextlib import contextmanager
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.exc import SQLAlchemyError
@@ -189,8 +190,33 @@ class DatabaseManager:
             logger.debug(f"设备同步跳过: {e}")
 
     def get_session(self) -> Session:
-        """获取数据库会话"""
+        """获取数据库会话（不推荐直接使用，请使用 session_scope）
+
+        Returns:
+            Session 对象（需要手动关闭）
+        """
         return self.SessionLocal()
+
+    @contextmanager
+    def session_scope(self):
+        """提供一个事务性的数据库会话 context manager
+
+        使用示例:
+            with db.session_scope() as session:
+                session.query(Model).all()
+
+        Yields:
+            Session 对象
+        """
+        session = self.SessionLocal()
+        try:
+            yield session
+            session.commit()
+        except Exception:
+            session.rollback()
+            raise
+        finally:
+            session.close()
 
     # ========== 目标账号操作 ==========
 

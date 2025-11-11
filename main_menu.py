@@ -38,7 +38,7 @@ def show_statistics():
     from src.database.models import InteractionTask, TargetAccount, Device, NewComment
     from sqlalchemy import func
 
-    with db.get_session() as session:
+    with db.session_scope() as session:
         from datetime import datetime, timedelta
 
         three_months_ago = datetime.now() - timedelta(days=90)
@@ -175,7 +175,7 @@ def show_devices():
     db = DatabaseManager()
     from src.database.models import Device
 
-    with db.get_session() as session:
+    with db.session_scope() as session:
         devices = session.query(Device).all()
 
         print(f"\n{'=' * 70}")
@@ -200,7 +200,7 @@ def show_accounts():
     db = DatabaseManager()
     from src.database.models import TargetAccount
 
-    with db.get_session() as session:
+    with db.session_scope() as session:
         accounts = session.query(TargetAccount).all()
 
         print(f"\n{'=' * 70}")
@@ -263,7 +263,7 @@ def add_account():
             return
 
         # 添加到数据库
-        with db.get_session() as session:
+        with db.session_scope() as session:
             # 检查是否已存在
             existing = session.query(TargetAccount).filter(
                 TargetAccount.account_id == account_id
@@ -297,7 +297,7 @@ def delete_account():
     db = DatabaseManager()
     from src.database.models import TargetAccount
 
-    with db.get_session() as session:
+    with db.session_scope() as session:
         print(f"\n{'=' * 70}")
         print("🗑️ 删除目标账号")
         print(f"{'=' * 70}\n")
@@ -371,7 +371,7 @@ def cleanup_duplicate_tasks_menu():
     from src.database.models import InteractionTask
     from sqlalchemy import func
 
-    with db.get_session() as session:
+    with db.session_scope() as session:
         total_users = session.query(func.count(func.distinct(InteractionTask.comment_user_id))).scalar() or 0
         total_tasks = session.query(func.count(InteractionTask.id)).scalar() or 0
 
@@ -444,7 +444,7 @@ def show_detailed_stats():
     from src.database.models import InteractionTask, TargetAccount, Device, Comment, NewComment
     from sqlalchemy import func, and_
 
-    with db.get_session() as session:
+    with db.session_scope() as session:
         print(f"\n{'=' * 70}")
         print("📊 详细数据统计")
         print(f"{'=' * 70}\n")

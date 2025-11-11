@@ -55,7 +55,7 @@ class AutomationExecutionStats:
 
     def _get_current_stats(self) -> Dict[str, int]:
         """获取当前的操作统计"""
-        with self.db.get_session() as session:
+        with self.db.session_scope() as session:
             stats = {}
 
             # 统计各种操作
@@ -110,7 +110,7 @@ class AutomationExecutionStats:
         duration = (self.end_time - self.start_time).total_seconds()
 
         # 统计任务完成情况
-        with self.db.get_session() as session:
+        with self.db.session_scope() as session:
             # 确定任务类型
             if self.automation_mode == 'realtime':
                 task_types = ['realtime']

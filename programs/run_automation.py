@@ -130,7 +130,7 @@ class AutomationService:
         Returns:
             包含各类任务数量的字典
         """
-        with self.db.get_session() as session:
+        with self.db.session_scope() as session:
             stats = {
                 'realtime_pending': session.query(InteractionTask).filter(
                     and_(
